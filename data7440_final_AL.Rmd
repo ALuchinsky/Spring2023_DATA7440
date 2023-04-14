@@ -1,0 +1,257 @@
+---
+title: "DATA7440, Final Assignment"
+author: "Aleksei Luchinsky"
+date: "2023-04-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+
+```{r}
+load("./data/apipop1.RData")
+```
+
+```{r}
+str(apipop_train1)
+```
+
+## Part 1
+
+### a) LASSO model
+
+```{r}
+library(glmnet)
+```
+
+Preparing train data
+
+
+
+```{r}
+set.seed(7440)
+X <- data.matrix(apipop_train1[,-1])
+y <- apipop_train1$awards
+cv.lasso.model <- cv.glmnet(X, y, alpha = 1, standardize = TRUE, nfolds = 5, family = "binomial")
+```
+
+```{r}
+lasso.best.lambda <- cv.lasso.model$lambda.min
+plot(cv.lasso.model, main = round(lasso.best.lambda, 5))
+```
+
+```{r}
+lasso.best.model <- glmnet(X, y, alpha = 1, lambda = lasso.best.lambda, family = "binomial")
+```
+
+
+
+
+```{r}
+preds <- (predict(lasso.best.model, X, type = "response") > 0.56)
+y_true = y=="Yes"
+sum(y_true == preds)/length(y)
+```
+
+### b) OneR
+
+```{r}
+#install.packages("OneR")
+library(OneR)
+```
+
+```{r}
+oneR.model <- OneR(awards ~ ., data = apipop_train1 )
+oneR.model
+```
+
+```{r}
+oneR.test.predicts <- predict(oneR.model, apipop_test1)
+sum(oneR.test.predicts == apipop_test1$awards)/length(apipop_test1$awards)
+```
+
+### c) Sequential covering
+
+```{r}
+#install.packages("RWeka")
+library(RWeka)
+```
+
+
+```{r}
+seq.model <- JRip(awards ~ ., data = apipop_test1)
+summary(seq.model)
+```
+
+```{r}
+seq.model
+```
+
+```{r}
+sum(predict(seq.model, newdata = apipop_test1) == apipop_test1$awards)/nrow(apipop_test1)
+```
+
+### d) rule-fit
+
+```{r}
+#install.packages("pre")
+library(pre)
+```
+
+```{r}
+set.seed(2021)
+rule.fit.model <- pre(awards ~ ., data = apipop_train1, family = "binomial", nfolds = 5)
+```
+
+```{r}
+rule.fit.model
+```
+
+
+```{r}
+sum(
+  predict(rule.fit.model, newdata = apipop_test1, type = "response")>0.5
+)/nrow(apipop_test1)
+```
+
+```{r}
+rule.fir.imps <- importance(rule.fit.model)
+```
+
+## Part 2
+
+```{r}
+library(caret)
+```
+
+```{r}
+y.test <- apipop_test1$awards
+y.test[1:10]
+```
+
+```{r}
+cm.table <- data.frame()
+```
+
+
+### LASSO model
+
+```{r}
+lasso.test.preds <- as.factor(as.vector(
+  ifelse(predict(lasso.best.model, newx = data.matrix(apipop_test1[,-1]), type = "response") > 0.5, "Yes", "No")
+))
+cm <- confusionMatrix(lasso.test.preds, y.test)
+cm.table <- rbind(cm.table, data.frame(model="LASSO", accuracy = cm$overall[1], kappa = cm$overall[2]))
+```
+
+### OneR
+
+```{r}
+oneR.test.preds <- as.factor(predict(oneR.model, apipop_test1))
+cm <- confusionMatrix(oneR.test.preds, y.test)
+cm.table <- rbind(cm.table, data.frame(model="OneR", accuracy = cm$overall[1], kappa = cm$overall[2]))
+```
+
+### Sequential model
+
+```{r}
+seq.test.preds <- as.factor(predict(seq.model, newdata = apipop_test1))
+cm <- confusionMatrix(seq.test.preds, y.test)
+cm.table <- rbind(cm.table, data.frame(model="SeqCover", accuracy = cm$overall[1], kappa = cm$overall[2]))
+```
+
+### Rule Fit
+
+```{r}
+rule.fit.test.preds <- as.factor(as.vector(
+  ifelse(predict(rule.fit.model, newdata = apipop_test1, type = "response") > 0.5, "Yes", "No")
+))
+cm <- confusionMatrix(rule.fit.test.preds, y.test)
+cm.table <- rbind(cm.table, data.frame(model="RuleFit", accuracy = cm$overall[1], kappa = cm$overall[2]))
+```
+
+```{r}
+cm.table
+```
+
+## Part 3:
+
+```{r}
+View(lasso.model)
+```
+
+### LASSO
+
+
+```{r}
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+```
+
+
+```{r}
+lasso.imps <- lasso.best.model %>% coef %>% as.matrix %>% as.data.frame %>% 
+  slice(-1) %>% abs %>% arrange(desc(s0))
+head(lasso.imps)
+```
+
+### One R
+
+```{r}
+oneR.model
+```
+
+As you can see, only **stype** variable is important in oneR model
+
+### Sequential Covering
+
+Here is the list of the rules
+
+
+```{r}
+seq.model
+```
+
+I can convert it to string and try to extract the rules usin regex
+
+```{r}
+seq.model$classifier$toString()
+```
+
+Will do it later
+
+### Rule Fit
+
+```{r}
+rule.fit.imps <- importance(rule.fit.model, plot = FALSE)
+rule.fit.imps$varimps[1:4, ]
+```
+
+## Part 4
+
+```{r}
+library(randomForest)
+```
+
+
+```{r}
+set.seed(429)
+rf.model <- randomForest(awards ~ ., data = apipop_train1, ntree = 750)
+```
+
+Train accuracy
+
+```{r}
+sum(predict(rf.model, newdata = apipop_train1) == apipop_train1$awards)/nrow(apipop_train1)
+```
+
+Test accuracy
+
+```{r}
+sum(predict(rf.model, newdata = apipop_test1) == apipop_test1$awards)/nrow(apipop_test1)
+```
+
