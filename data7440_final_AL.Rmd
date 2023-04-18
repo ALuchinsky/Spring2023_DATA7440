@@ -72,29 +72,6 @@ train_or_save(
     cv.lasso.model <<- cv.glmnet(X, y, alpha = 1, standardize = TRUE, nfolds = 5, family = "binomial")
   }
 )
-cv.lasso.model
-```
-
-```{r}
-rm(cv.lasso.model)
-load("./data/models/cv.lasso.model")
-cv.lasso.model
-```
-
-```{r}
-if(file.exists("./data/models/cv.lasso.model") & train == FALSE) {
-  print("Loading cv.lasso.model")
-  load("./data/models/cv.lasso.model")
-} else {
-  print("Training cv.lasso.model")
-  set.seed(7440)
-  cv.lasso.model <- cv.glmnet(X, y, alpha = 1, standardize = TRUE, nfolds = 5, family = "binomial")
-  save(cv.lasso.model, file = "./data/models/cv.lasso.model")
-}
-```
-
-```{r}
-get("cv.lasso.model")
 ```
 
 
@@ -123,18 +100,15 @@ sum(y_true == preds)/length(y)
 library(OneR)
 ```
 
-
-
 ```{r}
-if( file.exists("./data/models/oneR.model") & train == FALSE) {
-  print("Loading oneR.model")
-  load("./data/models/oneR.model")
-} else {
-  print("Training oneR.model")
-  oneR.model <- OneR(awards ~ ., data = apipop_train1 )
-  save(oneR.model, file = "./data/models/oneR.model")
-}
+train_or_save(
+  name = "oneR.model",
+  train_func = function() {
+      oneR.model <<- OneR(awards ~ ., data = apipop_train1 )
+  }
+)
 ```
+
 
 
 
@@ -178,19 +152,16 @@ sum(predict(seq.model, newdata = apipop_test1) == apipop_test1$awards)/nrow(apip
 library(pre)
 ```
 
-
-
 ```{r}
-if(file.exists("./data/models/rule.fit.model") & train == FALSE) {
-  print("Loading rule.fit.model")
-  load("./data/models/rule.fit.model")
-} else {
-  print("Training rule.fit.model")
-  set.seed(2021)
-  rule.fit.model <- pre(awards ~ ., data = apipop_train1, family = "binomial", nfolds = 5)
-  save(rule.fit.model, file = "./data/models/rule.fit.model")
-}
+train_or_save(
+  name = "rule.fit.model", 
+  train_func = function() {
+    set.seed(2021)
+    rule.fit.model <<- pre(awards ~ ., data = apipop_train1, family = "binomial", nfolds = 5)
+  }
+)
 ```
+
 
 ```{r}
 rule.fit.model
