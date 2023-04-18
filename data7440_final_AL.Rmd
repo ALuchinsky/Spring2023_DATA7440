@@ -28,6 +28,8 @@ str(apipop_train1)
 
 ### a) LASSO model
 
+
+
 ```{r message=FALSE, warning=FALSE}
 library(glmnet)
 ```
@@ -40,6 +42,44 @@ y <- apipop_train1$awards
 ```
 
 
+```{r}
+train_or_save <- function(name, train_func, train = FALSE, save = TRUE) {
+  file_name <- paste("./data/models/", name, sep="")
+  if(file.exists(file_name) & train == FALSE) {
+    print(paste("Loading ", name))
+    load(file_name)
+    assign(name, get(name), envir = .GlobalEnv)
+  } else {
+    print(paste("Training", name))
+    train_func()
+    
+    if(save) {
+      # print("Saving", name," to ", file_name)
+      save(list = name, file = file_name)
+    }
+  }
+}
+```
+
+
+
+
+```{r}
+train_or_save(
+  name = "cv.lasso.model",
+  train_func = function() {
+    set.seed(7440)
+    cv.lasso.model <<- cv.glmnet(X, y, alpha = 1, standardize = TRUE, nfolds = 5, family = "binomial")
+  }
+)
+cv.lasso.model
+```
+
+```{r}
+rm(cv.lasso.model)
+load("./data/models/cv.lasso.model")
+cv.lasso.model
+```
 
 ```{r}
 if(file.exists("./data/models/cv.lasso.model") & train == FALSE) {
@@ -52,6 +92,11 @@ if(file.exists("./data/models/cv.lasso.model") & train == FALSE) {
   save(cv.lasso.model, file = "./data/models/cv.lasso.model")
 }
 ```
+
+```{r}
+get("cv.lasso.model")
+```
+
 
 ```{r}
 lasso.best.lambda <- cv.lasso.model$lambda.min
