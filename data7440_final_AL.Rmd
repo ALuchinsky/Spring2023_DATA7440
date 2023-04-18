@@ -299,3 +299,44 @@ Test accuracy
 sum(predict(rf.model, newdata = apipop_test1) == apipop_test1$awards)/nrow(apipop_test1)
 ```
 
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+#install.packages("iml")
+library(iml)
+```
+
+```{r}
+as.data.frame(apipop_train1) %>% select(-awards)
+```
+
+
+```{r}
+# pred <- function(object, newdata) {
+#   return( predict())
+# }
+components_iml <- Predictor$new(
+  model = rf.model,
+  data = as.data.frame(apipop_train1) %>% select(-awards),
+  y = as.data.frame(apipop_train1) %>% pull(awards)
+)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+if(file.exists("./data/models/interact") & train==FALSE) {
+  print("Loading interact")
+  load("./data/models/interact")
+} else {
+  print("Training interact")
+  interact <- Interaction$new(components_iml)
+  save(interact, file = "./data/models/interact")
+}
+```
+
+```{r}
+interact$results %>% arrange(desc(.interaction)) %>% 
+  head
+```
+
+```{r}
+plot(interact)
+```
+
