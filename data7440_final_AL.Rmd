@@ -9,12 +9,16 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+
 ```{r}
 train = FALSE
 ```
 
 
 # Problem 1
+
+
 
 ```{r}
 load("./data/external/apipop1.RData")
@@ -26,14 +30,6 @@ str(apipop_train1)
 
 ## Part 1
 
-### a) LASSO model
-
-
-
-```{r message=FALSE, warning=FALSE}
-library(glmnet)
-```
-
 Preparing train data
 
 ```{r}
@@ -41,6 +37,7 @@ X <- data.matrix(apipop_train1[,-1])
 y <- apipop_train1$awards
 ```
 
+I will use this function to load extsting model or train a new one
 
 ```{r}
 train_or_save <- function(name, train_func, train = FALSE, save = TRUE) {
@@ -61,6 +58,12 @@ train_or_save <- function(name, train_func, train = FALSE, save = TRUE) {
 }
 ```
 
+### a) construct a LASSO model that predicts whether or not a school qualified for it’s award program. Use 5-fold cross validation on the apipop_train1 dataset to determine the penalty parameter and specify the seed 7440 prior to running the model.
+
+
+```{r message=FALSE, warning=FALSE}
+library(glmnet)
+```
 
 
 
@@ -74,26 +77,26 @@ train_or_save(
 )
 ```
 
+The best penalty prameter is
+
+```{r}
+cv.lasso.model$lambda.min
+```
+
 
 ```{r}
 lasso.best.lambda <- cv.lasso.model$lambda.min
 plot(cv.lasso.model, main = round(lasso.best.lambda, 5))
 ```
 
+Here is the modal trained with this value of parameter
+
 ```{r}
 lasso.best.model <- glmnet(X, y, alpha = 1, lambda = lasso.best.lambda, family = "binomial")
 ```
 
 
-
-
-```{r}
-preds <- (predict(lasso.best.model, X, type = "response") > 0.56)
-y_true = y=="Yes"
-sum(y_true == preds)/length(y)
-```
-
-### b) OneR
+### b) Now apply a one rule algorithm to determine the feature that most explains the award outcomes.
 
 ```{r}
 #install.packages("OneR")
@@ -109,15 +112,13 @@ train_or_save(
 )
 ```
 
-
-
-
 ```{r}
-oneR.test.predicts <- predict(oneR.model, apipop_test1)
-sum(oneR.test.predicts == apipop_test1$awards)/length(apipop_test1$awards)
+oneR.model
 ```
 
-### c) Sequential covering
+As you can see, the feature, that is most usefull to explain the outcome is **stype**
+
+### c) Now apply a sequential covering algorithm to expand the rule set derived in B.
 
 ```{r message=FALSE, warning=FALSE}
 #install.packages("RWeka")
@@ -137,15 +138,16 @@ library(RWeka)
 # }
 ```
 
+Here is the rule set from the covering algorithm
+
 ```{r}
 seq.model
 ```
 
-```{r}
-sum(predict(seq.model, newdata = apipop_test1) == apipop_test1$awards)/nrow(apipop_test1)
-```
+As you can see, the **stype** variable is part of almost all of the rules, so it is important
 
-### d) rule-fit
+
+### d) Now apply a rule-fit algorithm to determine features and possible interaction effects that are important for explaining award qualification. For this model set the seed to be 2021 and also use 5 folds.
 
 ```{r message=FALSE, warning=FALSE}
 #install.packages("pre")
@@ -157,22 +159,15 @@ train_or_save(
   name = "rule.fit.model", 
   train_func = function() {
     set.seed(2021)
-    rule.fit.model <<- pre(awards ~ ., data = apipop_train1, family = "binomial", nfolds = 5)
+    rule.fit.model <<- pre(awards ~ ., 
+                           data = apipop_train1, 
+                           family = "binomial", nfolds = 5
+                           )
   }
 )
 ```
 
-
-```{r}
-rule.fit.model
-```
-
-
-```{r}
-sum(
-  predict(rule.fit.model, newdata = apipop_test1, type = "response")>0.5
-)/nrow(apipop_test1)
-```
+This model also tells that **stype** is the most important variable
 
 ```{r}
 rule.fit.imps <- importance(rule.fit.model)
@@ -184,64 +179,105 @@ rule.fit.imps <- importance(rule.fit.model)
 library(caret)
 ```
 
-```{r}
-y.test <- apipop_test1$awards
-```
 
 ```{r}
+y.test <- apipop_test1$awards
 cm.table <- data.frame()
+```
+
+I will use this function to collect statistics about model's accuracy and kappa on training and test sets
+
+```{r}
+fill.table <- function(model_name, pred_func, y_train=y, y_test = y.test, 
+                       trainX = apipop_train1, 
+                       testX = apipop_test1) {
+  train.predictions <- pred_func(trainX)
+  cm.train = confusionMatrix(train.predictions, y_train)
+  test.predictions <- pred_func(testX)
+  cm.test = confusionMatrix(test.predictions, y_test)
+  return(data.frame(
+    model = model_name,
+    test.accuracy = cm.test$overall[1],
+    test.kappa = cm.test$overall[2],
+    train.accuracy = cm.train$overall[1],
+    train.kappa = cm.train$overall[2]
+  ))
+}
 ```
 
 
 ### LASSO model
 
 ```{r}
-lasso.test.preds <- as.factor(as.vector(
-  ifelse(predict(lasso.best.model, newx = data.matrix(apipop_test1[,-1]), type = "response") > 0.5, "Yes", "No")
-))
-cm <- confusionMatrix(lasso.test.preds, y.test)
-cm.table <- rbind(cm.table, data.frame(model="LASSO", accuracy = cm$overall[1], kappa = cm$overall[2]))
+cm.table <- rbind(cm.table, 
+  fill.table("LASSO", 
+           pred_func = function(X) {
+             probs = predict(lasso.best.model, newx = data.matrix(X), type = "response")
+             as.factor(as.vector(ifelse( probs> 0.5, "Yes", "No")))
+}, trainX = apipop_train1[,-1], testX = apipop_test1[,-1])
+)
 ```
+
+
 
 ### OneR
 
 ```{r}
-oneR.test.preds <- as.factor(predict(oneR.model, apipop_test1))
-cm <- confusionMatrix(oneR.test.preds, y.test)
-cm.table <- rbind(cm.table, data.frame(model="OneR", accuracy = cm$overall[1], kappa = cm$overall[2]))
+cm.table <- rbind(cm.table, 
+  fill.table("OneR", 
+           pred_func = function(X) {
+             as.factor(predict(oneR.model, X))
+})
+)
 ```
+
 
 ### Sequential model
 
 ```{r}
-seq.test.preds <- as.factor(predict(seq.model, newdata = apipop_test1))
-cm <- confusionMatrix(seq.test.preds, y.test)
-cm.table <- rbind(cm.table, data.frame(model="SeqCover", accuracy = cm$overall[1], kappa = cm$overall[2]))
+cm.table <- rbind(cm.table, 
+  fill.table("SeqCover", 
+           pred_func = function(X) {
+             as.factor(predict(seq.model, X))
+})
+)
 ```
+
+
 
 ### Rule Fit
 
 ```{r}
-rule.fit.test.preds <- as.factor(as.vector(
-  ifelse(predict(rule.fit.model, newdata = apipop_test1, type = "response") > 0.5, "Yes", "No")
-))
-cm <- confusionMatrix(rule.fit.test.preds, y.test)
-cm.table <- rbind(cm.table, data.frame(model="RuleFit", accuracy = cm$overall[1], kappa = cm$overall[2]))
+cm.table <- rbind(cm.table, 
+  fill.table("RuleFit", 
+           pred_func = function(X) {
+             probs = predict(rule.fit.model, newdata = X, type = "response")
+             as.factor(as.vector(ifelse( probs> 0.5, "Yes", "No")))
+})
+)
 ```
 
 ```{r}
-cm.table
+library(dplyr)
+library(magrittr)
 ```
 
-## Part 3:
+
+
+```{r}
+rownames(cm.table) <- 1:nrow(cm.table)
+cm.table %>% mutate_if(is.numeric, round, digits = 3) %>% arrange(test.accuracy)
+```
+
+As you can see, sequential covering is the best model both in terms of test accuracy and test kappa.
+
+## Part 3: For every model for which it is appropriate, derive the variable importance measures (feature specific importances, not rule specific importances) and create another table that lists the top 4 most important features for predicting whether a school qualified for it’s award program.
 
 
 ### LASSO
 
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
-library(dplyr)
-library(magrittr)
 library(ggplot2)
 ```
 
@@ -264,18 +300,24 @@ As you can see, only **stype** variable is important in oneR model
 
 Here is the list of the rules
 
-
 ```{r}
 seq.model
 ```
 
+The following models enter these rules and are important for making the decisions:
+
+* stype
+* enroll
+* grad.sch
+* not.hsg
+
+
 I can convert it to string and try to extract the rules usin regex
 
 ```{r}
-seq.model$classifier$toString()
+# seq.model$classifier$toString()
 ```
 
-Will do it later
 
 ### Rule Fit
 
@@ -284,45 +326,45 @@ rule.fit.imps <- importance(rule.fit.model, plot = FALSE)
 rule.fit.imps$varimps[1:4, ]
 ```
 
-## Part 4
+To summarize, all models tell that **stype** is the most important variable. Such variables as **enroll**, **grad.sch**, **meals** are also often present in the list of important predictors
+
+## Part 4: Now compute a random forest model to predict whether or not a school qualifies for its awards program (using the training data: apipop_train1) with 750 trees and default value of the mtry parameter. Prior to running the model, set the seed to be 429. Using your model:
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 library(randomForest)
 ```
 
-
 ```{r}
-if(file.exists("./data/models/rf.model") & train == FALSE) {
-  print("Loading rf.model")
-  load("./data/models/rf.model")
-} else {
-  print("Training rf.model")
+train_or_save(
+  name = "rf.model", 
+  train_func = function() {
   set.seed(429)
   rf.model <- randomForest(awards ~ ., data = apipop_train1, ntree = 750)
-  save(rf.model, file = "./data/models/rf.model")
-}
+  }
+)
 ```
 
-Train accuracy
+Train accuracy and kappa of this model is perfect. By accuracy on the test subset it is not as good:
 
 ```{r}
-sum(predict(rf.model, newdata = apipop_train1) == apipop_train1$awards)/nrow(apipop_train1)
+# cm.table <- rbind(cm.table, 
+  fill.table("RF", 
+           pred_func = function(X) {
+             predict(rf.model, newdata = X)
+})
+# )
 ```
 
-Test accuracy
 
-```{r}
-sum(predict(rf.model, newdata = apipop_test1) == apipop_test1$awards)/nrow(apipop_test1)
-```
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 #install.packages("iml")
 library(iml)
 ```
 
-```{r}
-as.data.frame(apipop_train1) %>% select(-awards)
-```
+
+
+
 
 
 ```{r}
