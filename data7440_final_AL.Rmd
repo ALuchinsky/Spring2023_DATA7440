@@ -363,38 +363,41 @@ library(iml)
 ```
 
 
-
-
-
+### a) create an overall interaction plot that displays the overall H statistic for each of the features.
 
 ```{r}
-# pred <- function(object, newdata) {
-#   return( predict())
-# }
-components_iml <- Predictor$new(
-  model = rf.model,
-  data = as.data.frame(apipop_train1) %>% select(-awards),
-  y = as.data.frame(apipop_train1) %>% pull(awards)
-)
-```
-
-```{r message=FALSE, warning=FALSE, paged.print=FALSE}
-if(file.exists("./data/models/interact") & train==FALSE) {
-  print("Loading interact")
-  load("./data/models/interact")
-} else {
-  print("Training interact")
-  interact <- Interaction$new(components_iml)
-  save(interact, file = "./data/models/interact")
-}
+predictor1 <-  Predictor$new(rf.model, dat = apipop_test1, y = apipop_test1$awards)
 ```
 
 ```{r}
-interact$results %>% arrange(desc(.interaction)) %>% 
-  head
+rf.interaction <- Interaction$new(predictor1)
 ```
 
 ```{r}
-plot(interact)
+save(rf.interaction, file = "./data/models/rf.interaction")
 ```
 
+
+```{r}
+plot(rf.interaction)
+```
+
+As you can see, **api.stu** has the largest H-score
+
+### b) Using the feature with the highest overall H statistic, create an additional plot that shows the H statistics related to this specific feature
+
+```{r}
+interactAPI <- Interaction$new(predictor1, feature = "api.stu")
+```
+
+```{r}
+save(interactAPI, file = "./data/models/interactAPI")
+```
+
+
+```{r}
+plot(interactAPI)
+```
+
+
+As you can see, for both cases the largest interaction is between **api.stu** and **enroll**
