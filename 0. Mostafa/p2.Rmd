@@ -46,6 +46,8 @@ load("./data/external/apipopProb2.RData")
 
 ## Functions
 
+### PDP1var function
+
 ```{r}
 PDP1var <- function(model1, var1) {
 
@@ -71,6 +73,7 @@ PDP1var <- function(model1, var1) {
 }
 ```
 
+### PDP2var function
 
 ```{r}
 PDP2var <- function(model1, var1, var2) {
@@ -85,6 +88,7 @@ PDP2var <- function(model1, var1, var2) {
 }
 ```
 
+### ALE function
 
 ```{r}
 ALE <- function(model1, feature1, data1, response1){
@@ -110,6 +114,35 @@ ALE <- function(model1, feature1, data1, response1){
 }
 ```
 
+### Interaction_overall function
+
+```{r}
+Interaction_overall <- function(model1, data1, response1) {
+    
+    predictor1 <- Predictor$new(model1, 
+                                data = data1, 
+                                y = response1
+                                )
+    interact <- Interaction$new(predictor1)
+    plot(interact)
+}
+```
+
+### Interaction_feature_specific function
+
+```{r}
+Interaction_feature_specific <- function(model1, data1, response1, feature1) {
+    
+    predictor1 <- Predictor$new(model1, 
+                                data = data1, 
+                                y = response1
+                                )
+    interact <- Interaction$new(predictor1,
+                                feature = feature1
+                                )
+    plot(interact)
+}
+```
 
 ## a. Partial Dependence plots 1-var   
 
@@ -205,34 +238,60 @@ ALE(model3,
 ## d. Interaction plots   
 
 - Compute the overall interaction H statistics     
-- as well as the feature specific statistics for the ELL variable for all of the models.    
+- as well as the feature specific statistics for the **ELL variable** for all of the models.    
 - Provide a table that includes as rows the predictors in the apipop_train data file and the H statistics for each model as columns.     
 - For the ELL specific H statistics, provide an interaction plot per model.
 
 ### model1: Generalized Linear Model
 
 ```{r}
-predictor1<-Predictor$new(model1, data=apipop_train, y=apipop_train$api00)
-interact <- Interaction$new(predictor1)
-plot(interact)
+Interaction_overall(model1, 
+                    apipop_train, 
+                    apipop_train$api00
+                    )
+```
+
+```{r}
+Interaction_feature_specific(model1, 
+                             apipop_train, 
+                             apipop_train$api00,
+                             "ell"
+                             )
 ```
 
 ### model2: CART
 
 ```{r}
-predictor1<-Predictor$new(model2, data=apipop_train, y=apipop_train$api00)
-interact <- Interaction$new(predictor1)
-plot(interact)
+Interaction_overall(model2, 
+                    apipop_train, 
+                    apipop_train$api00
+                    )
+```
+
+```{r}
+Interaction_feature_specific(model2, 
+                             apipop_train, 
+                             apipop_train$api00,
+                             "ell"
+                             )
 ```
 
 ### model3: eXtreme Gradient Boosting
 
 ```{r}
-predictor1<-Predictor$new(model3, data=apipop_train, y=apipop_train$api00)
-interact <- Interaction$new(predictor1)
-plot(interact)
+Interaction_overall(model3, 
+                    apipop_train, 
+                    apipop_train$api00
+                    )
 ```
 
+```{r}
+Interaction_feature_specific(model3, 
+                             apipop_train, 
+                             apipop_train$api00,
+                             "ell"
+                             )
+```
 
 ## e. Prediction performance    
 
