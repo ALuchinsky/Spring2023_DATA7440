@@ -1,0 +1,186 @@
+---
+title: "p2"
+author: "Mostafa"
+date: "04/25/2023"
+output:
+    html_notebook: 
+        toc: yes
+        toc_float: yes
+---
+
+
+# Problem 2    
+
+[50 points]
+
+We will use the api data again for this problem, but this time we are interested in predicting the api test scores for 2000 (i.e. api00) based on a battery of school, teacher and parent information. This time the data and models are available in the apipopProb2.RData R workspace. Note the data sets here are different than for Problem 1.   
+
+For this problem, you are given three models that aim at predicting **api00** (R objects model1 – model3), using different methods (i.e., CART, XGBoost, OLS regression). Utilize the following interpretation techniques with the training data to learn more about how those models were trained. Specifically for each of the models you should:   
+
+```{r}
+rm(list = ls())
+library(xgboost)
+library(glmnet)
+library(pdp)
+library(ggplot2)
+library(rpart)
+
+load("./data/external/apipopProb2.RData")
+```
+
+## a. Partial Dependence plots 1   
+Produce Partial Dependence plots for the most important predictor of each model.
+
+### model1: Generalized Linear Model
+```{r}
+varImp(model1, scale = FALSE)
+pd1a <- partial(model1, pred.var = "meals") 
+autoplot(pd1a, contour=TRUE)
+```
+
+### model2: CART
+```{r}
+varImp(model2, scale = FALSE)
+pd1a <- partial(model2, pred.var = "not.hsg") 
+autoplot(pd1a, contour=TRUE)
+```
+
+### model3: eXtreme Gradient Boosting
+```{r}
+varImp(model3, scale = FALSE)
+pd1a <- partial(model2, pred.var = "meals") 
+autoplot(pd1a, contour=TRUE)
+```
+
+## b. Partial Dependence plots 2  
+Produce Partial Dependence plots for the two most important predictors of each model (i.e., 3D plots or heatmaps or contour plots).
+
+### model1: Generalized Linear Model
+```{r}
+varImp(model1, scale = FALSE)
+pdp12 <- partial(model1, pred.var = c("meals", "ell"), plot = TRUE, chull = TRUE, palette = "magma") 
+pdp12
+```
+
+### model2: CART
+```{r}
+varImp(model2, scale = FALSE)
+pdp12 <- partial(model2, pred.var = c("not.hsg", "avg.ed"), plot = TRUE, chull = TRUE, palette = "magma") 
+pdp12
+```
+
+### model3: eXtreme Gradient Boosting
+```{r}
+varImp(model3, scale = FALSE)
+pdp12 <- partial(model3, pred.var = c("meals", "avg.ed"), plot = TRUE, chull = TRUE, palette = "magma") 
+pdp12
+```
+
+## c. ALE plots     
+Produce Accumulated Local Effects plots for the most important predictor in each model. How do these plots vary from those produced in part b? Given the correlation structure in the apipop_train data is it surprising or not that these plots differ or are similar to each other.
+
+```{r}
+library(grid)
+library(gridExtra)
+library(lattice)
+library(iml)
+```
+
+### model1: Generalized Linear Model
+```{r}
+varImp(model1, scale = FALSE)
+predictor1<-Predictor$new(model = model1, data=apipop_train, y=apipop_train$api00)
+pdpsf <- FeatureEffect$new(predictor1, feature="meals", method="pdp") 
+alesf <- FeatureEffect$new(predictor1, feature="meals") 
+grid.arrange(alesf$plot(), pdpsf$plot(), ncol=2)
+```
+
+### model2: CART
+```{r}
+varImp(model2, scale = FALSE)
+predictor1<-Predictor$new(model = model2, data=apipop_train, y=apipop_train$api00)
+pdpsf <- FeatureEffect$new(predictor1, feature="not.hsg", method="pdp") 
+alesf <- FeatureEffect$new(predictor1, feature="not.hsg") 
+grid.arrange(alesf$plot(), pdpsf$plot(), ncol=2)
+```
+
+### model3: eXtreme Gradient Boosting
+```{r}
+varImp(model3, scale = FALSE)
+predictor1<-Predictor$new(model = model3, data=apipop_train, y=apipop_train$api00)
+pdpsf <- FeatureEffect$new(predictor1, feature="meals", method="pdp") 
+alesf <- FeatureEffect$new(predictor1, feature="meals") 
+grid.arrange(alesf$plot(), pdpsf$plot(), ncol=2)
+```
+ 
+## d. Interaction plots    
+- Compute the overall interaction H statistics     
+- as well as the feature specific statistics for the ELL variable for all of the models.    
+- Provide a table that includes as rows the predictors in the apipop_train data file and the H statistics for each model as columns.     
+- For the ELL specific H statistics, provide an interaction plot per model.
+
+### model1: Generalized Linear Model
+```{r}
+predictor1<-Predictor$new(model1, data=apipop_train, y=apipop_train$api00)
+interact <- Interaction$new(predictor1)
+plot(interact)
+```
+
+### model2: CART
+```{r}
+predictor1<-Predictor$new(model2, data=apipop_train, y=apipop_train$api00)
+interact <- Interaction$new(predictor1)
+plot(interact)
+```
+
+### model3: eXtreme Gradient Boosting
+```{r}
+predictor1<-Predictor$new(model3, data=apipop_train, y=apipop_train$api00)
+interact <- Interaction$new(predictor1)
+plot(interact)
+```
+
+
+## e. Prediction performance    
+Evaluate the prediction performance of each model using the test set that is included in the workspace (e.g. apipop_test).
+
+### model1: Generalized Linear Model
+```{r}
+# prediction on test data
+yhat <- predict(model1, s = model1, apipop_test)
+# RMSE for test data
+error.test <- yhat - apipop_test$api00
+rmse.test <- sqrt(mean(error.test^2))
+rmse.test
+```
+
+### model2: CART
+```{r}
+# prediction on test data
+yhat <- predict(model1, s = model2, apipop_test)
+# RMSE for test data
+error.test <- yhat - apipop_test$api00
+rmse.test <- sqrt(mean(error.test^2))
+rmse.test
+```
+
+### model3: eXtreme Gradient Boosting
+```{r}
+# prediction on test data
+yhat <- predict(model3, s = model1, apipop_test)
+# RMSE for test data
+error.test <- yhat - apipop_test$api00
+rmse.test <- sqrt(mean(error.test^2))
+rmse.test
+```
+
+
+## f. Conclusion    
+Considering the results for the tasks above, which model object belongs to which method? Explain your choice!
+
+- model1: Generalized Linear Model (GLM) typically produces a model object of class "glm", which contains information about the model coefficients, standard errors, and various goodness-of-fit measures.    
+
+- model2: Classification and Regression Trees (CART) typically produces a model object of class "rpart", which contains information about the decision tree structure and splitting rules.    
+
+- model3: eXtreme Gradient Boosting (XGBoost) typically produces a model object of class "xgb.Booster", which contains information about the gradient boosting model parameters, feature importance, and the learned ensemble of decision trees.
+It is important to note that the specific properties of each model object may vary depending on the implementation and tuning choices made for each method.    
