@@ -2,14 +2,17 @@
 title: "DATA7440, Final Assignment"
 author: "Aleksei Luchinsky"
 date: "2023-04-12"
-output: html_document
+output:
+    html_notebook: 
+        toc: yes
+        toc_float: yes
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Loading packages
+# Loading packages and Data
 
 ```{r}
 suppressPackageStartupMessages(library(glmnet))
@@ -36,7 +39,6 @@ suppressPackageStartupMessages(library(googlesheets4))
 suppressPackageStartupMessages(library(hms))
 ```
 
-# Problem 1
 
 
 ```{r}
@@ -44,7 +46,7 @@ load("./data/external/apipop1.RData")
 str(apipop_train1)
 ```
 
-## Part 1
+# Part 1: Generating the Models
 
 Preparing train data
 
@@ -54,7 +56,9 @@ y.test <- apipop_test1$awards
 ```
 
 
-### a) construct a LASSO model that predicts whether or not a school qualified for it’s award program. Use 5-fold cross validation on the apipop_train1 dataset to determine the penalty parameter and specify the seed 7440 prior to running the model.
+## a) LASSO
+
+> construct a LASSO model that predicts whether or not a school qualified for it’s award program. Use 5-fold cross validation on the apipop_train1 dataset to determine the penalty parameter and specify the seed 7440 prior to running the model.
 
 
 
@@ -90,7 +94,9 @@ lasso.best.model <- glmnet(
 
 
 
-### b) Now apply a one rule algorithm to determine the feature that most explains the award outcomes.
+## b) oneR
+
+> Now apply a one rule algorithm to determine the feature that most explains the award outcomes.
 
 
 ```{r}
@@ -100,7 +106,9 @@ oneR.model
 
 As you can see, the feature, that is most useful to explain the outcome is **stype**
 
-### c) Now apply a sequential covering algorithm to expand the rule set derived in B.
+## c) Sequential Covering
+
+> Now apply a sequential covering algorithm to expand the rule set derived in B.
 
 
 ```{r}
@@ -111,7 +119,9 @@ seq.model
 As you can see, the **stype** variable is part of almost all of the rules, so it is important
 
 
-### d) Now apply a rule-fit algorithm to determine features and possible interaction effects that are important for explaining award qualification. For this model set the seed to be 2021 and also use 5 folds.
+## d) Rule-Fit
+
+> Now apply a rule-fit algorithm to determine features and possible interaction effects that are important for explaining award qualification. For this model set the seed to be 2021 and also use 5 folds.
 
 
 ```{r}
@@ -147,7 +157,9 @@ Coefficient is positive, to this rule votes for "Yes". It agrees, with the 1st r
 Coefficient is positive, to this rule votes for "Yes". This agrees with the 1st rule of the oneR model.
 
 
-## Part 2: Using the respective models create a table that provides overall accuracy, sensitivity and specificity for predicting if a school qualified for its awards program using the apipop_test1 as the test set for each of the models you derived in parts a-d of Part 1.
+# Part 2: Comparing The Models
+
+> Using the respective models create a table that provides overall accuracy, sensitivity and specificity for predicting if a school qualified for its awards program using the apipop_test1 as the test set for each of the models you derived in parts a-d of Part 1.
 
 
 
@@ -177,7 +189,7 @@ fill.table <- function(model_name, pred_func, y_train=apipop_train1$awards, y_te
 ```
 
 
-### LASSO model
+## LASSO model
 
 ```{r}
 cm.table <- rbind(cm.table, 
@@ -191,7 +203,7 @@ cm.table <- rbind(cm.table,
 
 
 
-### OneR
+## OneR
 
 ```{r}
 cm.table <- rbind(cm.table, 
@@ -203,7 +215,7 @@ cm.table <- rbind(cm.table,
 ```
 
 
-### Sequential model
+## Sequential model
 
 ```{r}
 cm.table <- rbind(cm.table, 
@@ -216,7 +228,7 @@ cm.table <- rbind(cm.table,
 
 
 
-### Rule Fit
+## Rule Fit
 
 ```{r}
 cm.table <- rbind(cm.table, 
@@ -228,7 +240,7 @@ cm.table <- rbind(cm.table,
 )
 ```
 
-
+## Results
 
 ```{r}
 rownames(cm.table) <- 1:nrow(cm.table)
@@ -237,10 +249,12 @@ cm.table %>% mutate_if(is.numeric, round, digits = 3) %>% arrange(test.accuracy)
 
 As you can see, sequential covering is the best model both in terms of test accuracy and test kappa.
 
-## Part 3: For every model for which it is appropriate, derive the variable importance measures (feature specific importances, not rule specific importances) and create another table that lists the top 4 most important features for predicting whether a school qualified for it’s award program.
+# Part 3: Important Variables
+
+> For every model for which it is appropriate, derive the variable importance measures (feature specific importances, not rule specific importances) and create another table that lists the top 4 most important features for predicting whether a school qualified for it’s award program.
 
 
-### LASSO
+## LASSO
 
 
 ```{r}
@@ -251,7 +265,7 @@ head(lasso.imps)
 
 **stype** is the most important variable
 
-### One R
+## One R
 
 ```{r}
 oneR.model
@@ -259,7 +273,7 @@ oneR.model
 
 As you can see, only **stype** variable is important in oneR model
 
-### Sequential Covering
+## Sequential Covering
 
 Here is the list of the rules
 
@@ -278,16 +292,20 @@ The following models enter these rules and are important for making the decision
 I can convert it to string and try to extract the rules using regexp
 
 
-### Rule Fit
+## Rule Fit
 
 ```{r}
 rule.fit.imps <- pre::importance(rule.fit.model, plot = FALSE)
 rule.fit.imps$varimps[1:4, ]
 ```
 
+## Results
+
 To summarize, all models tell that **stype** is the most important variable. Such variables as **enroll**, **grad.sch**, **meals** are also often present in the list of important predictors
 
-## Part 4: Now compute a random forest model to predict whether or not a school qualifies for its awards program (using the training data: apipop_train1) with 750 trees and default value of the mtry parameter. Prior to running the model, set the seed to be 429. Using your model:
+# Part 4: Random Forest
+
+Now compute a random forest model to predict whether or not a school qualifies for its awards program (using the training data: apipop_train1) with 750 trees and default value of the mtry parameter. Prior to running the model, set the seed to be 429. Using your model:
 
 ```{r}
 set.seed(429)
@@ -312,10 +330,12 @@ cm.table %>% mutate_if(is.numeric, round, digits = 3) %>% arrange(test.accuracy)
 
 
 
-### a) create an overall interaction plot that displays the overall H statistic for each of the features.
+## a) Overall Interaction
+
+> create an overall interaction plot that displays the overall H statistic for each of the features.
 
 
-Here is the code to calculte one-feature H-staistics
+Here is the code to calculate one-feature H-statistics
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
 set.seed(123)
@@ -358,7 +378,9 @@ ggplot(h.res, aes(y=var, yend=var, xend = 0, x=value)) + geom_point(color = "blu
 
 As you can see, **stype** has the largest H-score. This agrees with our previous results
 
-### b) Using the feature with the highest overall H statistic, create an additional plot that shows the H statistics related to this specific feature
+## b) STYPE interactions
+
+> Using the feature with the highest overall H statistic, create an additional plot that shows the H statistics related to this specific feature
 
 
 
@@ -379,7 +401,9 @@ ggplot(h2.res, aes(y=var, yend=var, xend = 0, x=value)) + geom_point(color = "bl
   geom_segment(linetype = 2)
 ```
 
-### c) Is the information in the second plot consistent with the some of the rules the Rule Fit model is reporting? Why or why not?
+## c) Comparison with Rule-Fit
+
+> Is the information in the second plot consistent with the some of the rules the Rule Fit model is reporting? Why or why not?
 
 
 As you can see, the highest h-statistic value here is for api.stu : stype interaction. For Rule Fit model there is only one rule, containing both of these variables, its importance is not very large
@@ -395,7 +419,9 @@ Second most important interaction according to H statistics is ell:stype. We hav
 rule.fit.imps$baseimps %>% filter(grepl("stype", description) & grepl("ell", description))
 ```
 
-### d) What is the H-statistic value corresponding to the variables included in the top- most important rule in the rule fit model that involves only two predictors? (Be sure to indicate what the top-most important rule with two features is from your rule fit model, along with it’s importance) as well as the plot of that rule from the RuleFit model.
+## d) Comparison with Rule-Fit: H-Statistics
+
+> What is the H-statistic value corresponding to the variables included in the top- most important rule in the rule fit model that involves only two predictors? (Be sure to indicate what the top-most important rule with two features is from your rule fit model, along with it’s importance) as well as the plot of that rule from the RuleFit model.
 
 ```{r}
 rule.fit.imps$baseimps %>% arrange(desc(imp)) %>% head(10)

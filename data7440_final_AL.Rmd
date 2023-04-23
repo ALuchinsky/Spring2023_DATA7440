@@ -2,7 +2,10 @@
 title: "DATA7440, Final Assignment"
 author: "Aleksei Luchinsky"
 date: "2023-04-12"
-output: html_document
+output:
+    html_notebook: 
+        toc: yes
+        toc_float: yes
 ---
 
 ```{r setup, include=FALSE}
