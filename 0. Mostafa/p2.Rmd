@@ -46,7 +46,7 @@ load("./data/external/apipopProb2.RData")
 
 ## Functions
 
-### PDP1var function
+### F1. PDP1var function
 
 ```{r}
 PDP1var <- function(model1, var1) {
@@ -73,7 +73,7 @@ PDP1var <- function(model1, var1) {
 }
 ```
 
-### PDP2var function
+### F2. PDP2var function
 
 ```{r}
 PDP2var <- function(model1, var1, var2) {
@@ -88,7 +88,7 @@ PDP2var <- function(model1, var1, var2) {
 }
 ```
 
-### ALE function
+### F3. ALE function
 
 ```{r}
 ALE <- function(model1, feature1, data1, response1){
@@ -114,7 +114,7 @@ ALE <- function(model1, feature1, data1, response1){
 }
 ```
 
-### Interaction_overall function
+### F4. Interaction_overall function
 
 ```{r}
 Interaction_overall <- function(model1, data1, response1) {
@@ -128,7 +128,7 @@ Interaction_overall <- function(model1, data1, response1) {
 }
 ```
 
-### Interaction_feature_specific function
+### F5. Interaction_feature_specific function
 
 ```{r}
 Interaction_feature_specific <- function(model1, data1, response1, feature1) {
@@ -144,28 +144,60 @@ Interaction_feature_specific <- function(model1, data1, response1, feature1) {
 }
 ```
 
+## Important predictor
+
+### model 1
+
+```{r}
+varImp(model1, scale = FALSE)
+```
+
+### model 2
+
+```{r}
+varImp(model2, scale = FALSE)
+```
+
+### model 3
+
+```{r}
+varImp(model3, scale = FALSE)
+```
+
 ## a. Partial Dependence plots 1-var   
 
 Produce Partial Dependence plots for the most important predictor of each model.
 
 ### model1: Generalized Linear Model
 
+**Interpretation**:      
+A steep straight decline which means a strong negative relationship between "yhat" and "meals".
+
 ```{r}
-varImp(model1, scale = FALSE)
 PDP1var(model1, "meals")
 ```
 
 ### model2: CART
 
+**Interpretation**:      
+
+The curve on the Partial Dependence Plot (PDP) appears as a step function, with flat regions separated by sharp jumps downward, it suggests that there may be specific values of the predictor variable (not.hsg) that are particularly important in determining the predicted outcome (yhat).    
+
 ```{r}
-varImp(model2, scale = FALSE)
 PDP1var(model2, "not.hsg")
 ```
 
 ### model3: eXtreme Gradient Boosting
 
+**Interpretation**:      
+
+The curve on a Partial Dependence Plot (PDP) is declining overall but has local ups and downs, it suggests:    
+
+1. There may be a non-linear relationship between the predictor variable and the predicted outcome. These local deviations could represent interactions between the predictor variable and other features in the model, or they could suggest that there are specific ranges of the predictor variable where it has a stronger or weaker impact on the predicted outcome.     
+
+2. It's also possible that the local ups and downs in the curve are simply due to noise in the data or limitations of the model. In this case, it's important to carefully evaluate the quality of the data and the appropriateness of the modeling approach to ensure that the PDP accurately represents the relationship between the predictor variable and the predicted outcome.   
+
 ```{r}
-varImp(model3, scale = FALSE)
 PDP1var(model3, "meals")
 ```
 
@@ -175,22 +207,37 @@ Produce Partial Dependence plots for the two most important predictors of each m
 
 ### model1: Generalized Linear Model
 
+**Interpretation**:      
+
+This type of relationship is known as a U-shaped relationship, where the predicted outcome is highest when both variables are at low levels, decreases as one or both variables increase, and then may increase again at higher levels of both variables. It suggests that there may be a nonlinear relationship between the two predictor variables and the target variable.    
+
+The slightly increasing slope of the plot suggests that the effect of the predictor variables on the predicted outcome is becoming slightly stronger as the values of the predictor variables increase. However, the U-shaped relationship suggests that there may be other factors at play that are causing the decrease in the predicted outcome as the values of the predictor variables increase.   
+
 ```{r}
-varImp(model1, scale = FALSE)
 PDP2var(model1, "meals", "ell")
 ```
 
 ### model2: CART
 
+**Interpretation**:      
+
+The decreasing slope suggests that as one predictor variable increases, the effect of the other predictor variable on the predicted outcome is becoming weaker. This is indicative of an interaction effect, where the effect of one predictor variable depends on the value of the other predictor variable.     
+
+The fact that the z-axis is highest when the y-axis is high and the x-axis is low, and lowest when the y-axis is low and the x-axis is high, suggests that the two predictor variables are working in opposite directions. This means that when one predictor variable is high and the other is low, the predicted outcome is high, while the predicted outcome is low when the values are reversed.     
+
 ```{r}
-varImp(model2, scale = FALSE)
 PDP2var(model1, "not.hsg", "avg.ed")
 ```
 
-### model3: eXtreme Gradient Boosting
+### model3: eXtreme Gradient Boosting   
+
+**Interpretation**:      
+
+The slightly decreasing slope suggests that the interaction effect is weaker than in the case where the slope is strictly decreasing. However, it still suggests that as one predictor variable increases, the effect of the other predictor variable on the predicted outcome is becoming weaker.     
+
+The fact that the z-axis is highest when the y-axis is high and the x-axis is low, and lowest when the y-axis is low and the x-axis is high, suggests that the two predictor variables are working in opposite directions. This means that when one predictor variable is high and the other is low, the predicted outcome is high, while the predicted outcome is low when the values are reversed.    
 
 ```{r}
-varImp(model3, scale = FALSE)
 PDP2var(model1, "meals", "avg.ed")
 ```
 
@@ -199,11 +246,15 @@ PDP2var(model1, "meals", "avg.ed")
 - Produce Accumulated Local Effects plots for the most important predictor in each model.     
 - How do these plots vary from those produced in part b? Given the correlation structure in the apipop_train data is it surprising or not that these plots differ or are similar to each other.
 
-### model1: Generalized Linear Model
+### model1: Generalized Linear Model   
+
+**Interpretation**:      
+
+It suggests a negative relationship between the predictor variable (x-axis) and the predicted outcome (y-axis). This means that as the value of the predictor variable increases, the predicted outcome decreases.     
+
+The decreasing slope of the ALE plot suggests that the relationship between the predictor variable and the predicted outcome is becoming weaker as the value of the predictor variable increases. This is consistent with the decreasing ALE of y and predicted y values with increasing x-axis values.    
 
 ```{r}
-varImp(model1, scale = FALSE)
-
 ALE(model1, 
     "meals", 
     apipop_train, 
@@ -211,11 +262,15 @@ ALE(model1,
     )
 ```
 
-### model2: CART
+### model2: CART     
+
+**Interpretation**:      
+
+It suggests that the relationship between the predictor variable and the predicted outcome is not linear. Instead, there may be discrete intervals or steps where the effect of the predictor variable on the predicted outcome changes.   
+
+The step-like pattern in the ALE plot suggests that the relationship between the predictor variable and the predicted outcome may be due to different factors or conditions that affect the outcome. For example, there may be different subgroups or categories of observations that have different relationships between the predictor variable and the predicted outcome.    
 
 ```{r}
-varImp(model2, scale = FALSE)
-
 ALE(model2, 
     "not.hsg", 
     apipop_train, 
@@ -223,11 +278,17 @@ ALE(model2,
     )
 ```
 
-### model3: eXtreme Gradient Boosting
+### model3: eXtreme Gradient Boosting     
+
+**Interpretation**:      
+
+It suggests that the relationship between the predictor variable and the predicted outcome is not linear and may have some non-monotonic behavior.
+
+The ups and downs in the ALE plot indicate that the relationship between the predictor variable and the predicted outcome may change direction or magnitude at certain values of the predictor variable. This non-monotonic behavior can arise due to complex interactions or nonlinear relationships between the predictor variable and other variables in the model.     
+
+In this case, it may be useful to investigate the data further to identify the factors that contribute to the non-monotonic behavior. This could involve examining other variables that may interact with the predictor variable, or exploring subgroups or categories of observations that have different relationships with the predictor variable.    
 
 ```{r}
-varImp(model3, scale = FALSE)
-
 ALE(model3, 
     "meals", 
     apipop_train, 
