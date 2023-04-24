@@ -3,9 +3,10 @@ title: "p2"
 author: "Mostafa"
 date: "04/25/2023"
 output:
-    html_notebook: 
-        toc: yes
-        toc_float: yes
+  html_notebook:
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
 ---
 
 # Problem 2    
@@ -46,7 +47,7 @@ load("./data/external/apipopProb2.RData")
 
 ## Functions
 
-### F1. PDP1var function
+### F1. PDP1var    
 
 ```{r}
 PDP1var <- function(model1, var1) {
@@ -73,7 +74,7 @@ PDP1var <- function(model1, var1) {
 }
 ```
 
-### F2. PDP2var function
+### F2. PDP2var    
 
 ```{r}
 PDP2var <- function(model1, var1, var2) {
@@ -88,7 +89,7 @@ PDP2var <- function(model1, var1, var2) {
 }
 ```
 
-### F3. ALE function
+### F3. ALE     
 
 ```{r}
 ALE <- function(model1, feature1, data1, response1){
@@ -114,7 +115,7 @@ ALE <- function(model1, feature1, data1, response1){
 }
 ```
 
-### F4. Interaction_overall function
+### F4. Interaction overall   
 
 ```{r}
 Interaction_overall <- function(model1, data1, response1) {
@@ -128,7 +129,25 @@ Interaction_overall <- function(model1, data1, response1) {
 }
 ```
 
-### F5. Interaction_feature_specific function
+```{r}
+Interaction_overall <- function(model1, data1, response1) {
+    
+    predictor1 <- Predictor$new(model1, 
+                                data = data1, 
+                                y = response1
+                                )
+    interact <- Interaction$new(predictor1)
+    results_head <- head(interact$results, nrow(interact$results))
+    plot_output <- plot(interact)
+    
+    output_list <- list(results_head = results_head, 
+                        plot_output = plot_output
+                        )
+    return(output_list)
+}
+```
+
+### F5. Interaction feature spec
 
 ```{r}
 Interaction_feature_specific <- function(model1, data1, response1, feature1) {
@@ -144,31 +163,55 @@ Interaction_feature_specific <- function(model1, data1, response1, feature1) {
 }
 ```
 
+```{r}
+Interaction_feature_specific <- function(model1, data1, response1, feature1) {
+    
+    predictor1 <- Predictor$new(model1, 
+                                data = data1, 
+                                y = response1
+                                )
+    interact <- Interaction$new(predictor1,
+                                feature = feature1
+                                )
+    results_head <- head(interact$results, nrow(interact$results))
+    plot_output <- plot(interact)
+    
+    output_list <- list(results_head = results_head, 
+                        plot_output = plot_output
+                        )
+    return(output_list)
+}
+```
+
 ## Important predictor
 
-### model 1
+### model 1 VarImp
 
 ```{r}
 varImp(model1, scale = FALSE)
 ```
 
-### model 2
+### model 2 VarImp
 
 ```{r}
 varImp(model2, scale = FALSE)
 ```
 
-### model 3
+### model 3 VarImp
 
 ```{r}
 varImp(model3, scale = FALSE)
 ```
 
-## a. Partial Dependence plots 1-var   
+## a. PDP 1-var 
+
+PDP 1-var: Partial Dependence plots 1-var   
 
 Produce Partial Dependence plots for the most important predictor of each model.
 
-### model1: Generalized Linear Model
+### model1: GLM
+
+GLM: Generalized Linear Model
 
 **Interpretation**:      
 A steep straight decline which means a strong negative relationship between "yhat" and "meals".
@@ -179,6 +222,8 @@ PDP1var(model1, "meals")
 
 ### model2: CART
 
+CART: Classification And Regression Tree 
+
 **Interpretation**:      
 
 The curve on the Partial Dependence Plot (PDP) appears as a step function, with flat regions separated by sharp jumps downward, it suggests that there may be specific values of the predictor variable (not.hsg) that are particularly important in determining the predicted outcome (yhat).    
@@ -187,7 +232,9 @@ The curve on the Partial Dependence Plot (PDP) appears as a step function, with 
 PDP1var(model2, "not.hsg")
 ```
 
-### model3: eXtreme Gradient Boosting
+### model3: XGBoost
+
+XGBoost: eXtreme Gradient Boosting
 
 **Interpretation**:      
 
@@ -201,11 +248,15 @@ The curve on a Partial Dependence Plot (PDP) is declining overall but has local 
 PDP1var(model3, "meals")
 ```
 
-## b. Partial Dependence plots 2-var  
+## b. PDP 2-var
+
+PDP 2-var: Partial Dependence Plots 2-var  
 
 Produce Partial Dependence plots for the two most important predictors of each model (i.e., 3D plots or heatmaps or contour plots).
 
-### model1: Generalized Linear Model
+### model1: GLM 
+
+GLM: Generalized Linear Model
 
 **Interpretation**:      
 
@@ -219,6 +270,8 @@ PDP2var(model1, "meals", "ell")
 
 ### model2: CART
 
+CART: Classification And Regression Tree
+
 **Interpretation**:      
 
 The decreasing slope suggests that as one predictor variable increases, the effect of the other predictor variable on the predicted outcome is becoming weaker. This is indicative of an interaction effect, where the effect of one predictor variable depends on the value of the other predictor variable.     
@@ -229,7 +282,9 @@ The fact that the z-axis is highest when the y-axis is high and the x-axis is lo
 PDP2var(model1, "not.hsg", "avg.ed")
 ```
 
-### model3: eXtreme Gradient Boosting   
+### model3: XGBoost
+
+XGBoost: eXtreme Gradient Boosting   
 
 **Interpretation**:      
 
@@ -241,12 +296,16 @@ The fact that the z-axis is highest when the y-axis is high and the x-axis is lo
 PDP2var(model1, "meals", "avg.ed")
 ```
 
-## c. ALE plots     
+## c. ALE plots
+
+ALE plots: Accumulated Local Effects plots
 
 - Produce Accumulated Local Effects plots for the most important predictor in each model.     
 - How do these plots vary from those produced in part b? Given the correlation structure in the apipop_train data is it surprising or not that these plots differ or are similar to each other.
 
-### model1: Generalized Linear Model   
+### model1: GLM
+
+GLM: Generalized Linear Model   
 
 **Interpretation**:      
 
@@ -262,7 +321,9 @@ ALE(model1,
     )
 ```
 
-### model2: CART     
+### model2: CART   
+
+CART: Classification And Regression Tree
 
 **Interpretation**:      
 
@@ -278,7 +339,9 @@ ALE(model2,
     )
 ```
 
-### model3: eXtreme Gradient Boosting     
+### model3: XGBoost
+
+XGBoost: eXtreme Gradient Boosting     
 
 **Interpretation**:      
 
@@ -303,7 +366,9 @@ ALE(model3,
 - Provide a table that includes as rows the predictors in the apipop_train data file and the H statistics for each model as columns.     
 - For the ELL specific H statistics, provide an interaction plot per model.
 
-### model1: Generalized Linear Model
+### model1: GLM
+
+GLM: Generalized Linear Model
 
 ```{r}
 Interaction_overall(model1, 
@@ -322,6 +387,8 @@ Interaction_feature_specific(model1,
 
 ### model2: CART
 
+CART: Classification and Regression Tree
+
 ```{r}
 Interaction_overall(model2, 
                     apipop_train, 
@@ -337,7 +404,9 @@ Interaction_feature_specific(model2,
                              )
 ```
 
-### model3: eXtreme Gradient Boosting
+### model3: XGBoost
+
+XGBoost: eXtreme Gradient Boosting
 
 ```{r}
 Interaction_overall(model3, 
@@ -358,7 +427,9 @@ Interaction_feature_specific(model3,
 
 Evaluate the prediction performance of each model using the test set that is included in the workspace (e.g. apipop_test).
 
-### model1: Generalized Linear Model
+### model1: GLM
+
+GLM: Generalized Linear Model
 
 ```{r}
 # prediction on test data
@@ -371,6 +442,8 @@ rmse.test
 
 ### model2: CART
 
+CART: Classification And Regression Tree
+
 ```{r}
 # prediction on test data
 yhat <- predict(model1, s = model2, apipop_test)
@@ -380,7 +453,9 @@ rmse.test <- sqrt(mean(error.test^2))
 rmse.test
 ```
 
-### model3: eXtreme Gradient Boosting
+### model3: XGBoost
+
+XGBoost: eXtreme Gradient Boosting
 
 ```{r}
 # prediction on test data
