@@ -305,7 +305,7 @@ To summarize, all models tell that **stype** is the most important variable. Suc
 
 # Part 4: Random Forest
 
-Now compute a random forest model to predict whether or not a school qualifies for its awards program (using the training data: apipop_train1) with 750 trees and default value of the mtry parameter. Prior to running the model, set the seed to be 429. Using your model:
+> Now compute a random forest model to predict whether or not a school qualifies for its awards program (using the training data: apipop_train1) with 750 trees and default value of the mtry parameter. Prior to running the model, set the seed to be 429. Using your model:
 
 ```{r}
 set.seed(429)
@@ -435,6 +435,7 @@ set.seed(456)
 interactEnroll <- Interaction$new(predictor1, feature = "enroll")
 ```
 
+In the plot below it is marked as red
 
 ```{r}
 h2.res <- data.frame(interactEnroll$results) %>% 
@@ -442,8 +443,8 @@ h2.res <- data.frame(interactEnroll$results) %>%
   transmute(var=.feature, value=.interaction) %>% 
   arrange(value) %>% 
   mutate(var = factor(var, levels = var))
-ggplot(h2.res, aes(y=var, yend=var, xend = 0, x=value)) + geom_point(color = "blue", cex = 2) + 
-  geom_segment(linetype = 2)
+ggplot(h2.res, aes(y=var, yend=var, xend = 0, x=value, color = !grepl("api.stu", var))) + geom_point(cex = 2.5) + 
+  geom_segment(linetype = 2, lwd = 1.2) + theme(legend.position = "none")
 ```
 
 As you can see, this interaction is quite important, its H-value is 0.53

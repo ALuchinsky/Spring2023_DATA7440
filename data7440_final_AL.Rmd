@@ -19,8 +19,6 @@ train = FALSE
 ```
 
 
-# Problem 1
-
 
 ```{r}
 load("./data/external/apipop1.RData")
