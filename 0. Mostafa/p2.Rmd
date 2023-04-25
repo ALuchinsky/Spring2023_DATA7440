@@ -125,18 +125,6 @@ Interaction_overall <- function(model1, data1, response1) {
                                 y = response1
                                 )
     interact <- Interaction$new(predictor1)
-    plot(interact)
-}
-```
-
-```{r}
-Interaction_overall <- function(model1, data1, response1) {
-    
-    predictor1 <- Predictor$new(model1, 
-                                data = data1, 
-                                y = response1
-                                )
-    interact <- Interaction$new(predictor1)
     results_head <- head(interact$results, nrow(interact$results))
     plot_output <- plot(interact)
     
@@ -148,20 +136,6 @@ Interaction_overall <- function(model1, data1, response1) {
 ```
 
 ### F5. Interaction feature spec
-
-```{r}
-Interaction_feature_specific <- function(model1, data1, response1, feature1) {
-    
-    predictor1 <- Predictor$new(model1, 
-                                data = data1, 
-                                y = response1
-                                )
-    interact <- Interaction$new(predictor1,
-                                feature = feature1
-                                )
-    plot(interact)
-}
-```
 
 ```{r}
 Interaction_feature_specific <- function(model1, data1, response1, feature1) {
@@ -302,6 +276,13 @@ ALE plots: Accumulated Local Effects plots
 
 - Produce Accumulated Local Effects plots for the most important predictor in each model.     
 - How do these plots vary from those produced in part b? Given the correlation structure in the apipop_train data is it surprising or not that these plots differ or are similar to each other.
+  - **Answer**: 
+    - **model1 (GLM)**: The first and second interpretations are describing different types of relationships between predictor variables and a target variable. The first interpretation describes a U-shaped relationship, where the predicted outcome initially increases as both predictor variables increase, but then decreases again at higher levels of both variables. This suggests a nonlinear relationship between the predictor variables and the target variable. In contrast, the second interpretation describes a negative relationship between the predictor variable and the predicted outcome. As the value of the predictor variable increases, the predicted outcome decreases. This suggests a linear relationship between the predictor variable and the target variable. Additionally, the first interpretation mentions that there may be other factors at play causing the decrease in the predicted outcome as the values of the predictor variables increase, while the second interpretation does not mention any potential confounding factors.
+    
+    - **model2 (CART)**: The two interprets describe different patterns in the relationship between predictor variables and the predicted outcome. The first interpret suggests that there is an interaction effect, where the effect of one predictor variable depends on the value of the other predictor variable. This means that the relationship between the predictor variables and the predicted outcome is not independent but rather depends on the joint values of the predictor variables. Additionally, the fact that the z-axis is highest when the y-axis is high and the x-axis is low, and lowest when the y-axis is low and the x-axis is high, suggests that the two predictor variables are working in opposite directions. On the other hand, the second interpret suggests that the relationship between the predictor variable and the predicted outcome is not linear. There may be discrete intervals or steps where the effect of the predictor variable on the predicted outcome changes. This means that the relationship between the predictor variable and the predicted outcome may be due to different factors or conditions that affect the outcome, such as different subgroups or categories of observations that have different relationships between the predictor variable and the predicted outcome. Therefore, the first interpret suggests an interaction effect between the predictor variables, while the second interpret suggests non-linearity in the relationship between the predictor variable and the predicted outcome.    
+    
+    - **model3 (XGBoost)**: The first and second interprets are different in their focus and conclusions. The first interpretation describes a linear relationship between two predictor variables and the predicted outcome. It suggests that as one predictor variable increases, the effect of the other predictor variable on the predicted outcome is becoming weaker. It also suggests that the two predictor variables are working in opposite directions, with high values of one variable and low values of the other leading to high predicted outcomes. This interpretation does not suggest any non-monotonic behavior or complex interactions between the predictor variables and other variables in the model. On the other hand, the second interpretation suggests a non-linear and potentially complex relationship between the predictor variable and the predicted outcome. It describes ups and downs in the ALE plot, indicating that the relationship between the predictor variable and the predicted outcome may change direction or magnitude at certain values of the predictor variable. This behavior could arise due to complex interactions or nonlinear relationships with other variables in the model. This interpretation suggests that further investigation is needed to understand the factors contributing to the non-monotonic behavior.
+    
 
 ### model1: GLM
 
@@ -370,6 +351,16 @@ ALE(model3,
 
 GLM: Generalized Linear Model
 
+**Interpretation**:      
+
+- overal:
+    - The overall interaction values for the Generalized Linear Model are all very small, with the largest value being 1.259390e-15 for the "cname" feature. This suggests that there is little to no interaction between the different features in the model, and that the features are largely independent in their influence on the target variable. In other words, the model does not detect any significant interactions between the features that would affect their contribution to the target variable. This result may indicate that the features have a simple linear relationship with the target variable or that the model is not complex enough to capture any non-linear relationships or interactions between the features.     
+    
+- Feature specific:
+    - The output of the specific interaction for the Generalized Linear Model indicates the strength of interaction between two variables, in this case, the interaction between "stype" and "ell". The values of the coefficients represent the strength of the interaction. A coefficient close to zero indicates little or no interaction, while a large coefficient indicates a strong interaction between the two variables. Looking at the specific interaction coefficients, we can see that the interaction between "stype" and "ell" is very small, with a coefficient of 1.243676e-15. This suggests that there is little interaction between these two variables in predicting the target variable. Similarly, the coefficients for "cname:ell", "api00:ell", and "api99:ell" are all zero, indicating no interaction between these variables. On the other hand, we can see a relatively strong interaction between "meals" and the target variable "ell" (coefficient of 3.420603e-16), as well as between "not.hsg" and "ell" (coefficient of 2.050319e-15) and between "some.col" and "ell" (coefficient of 4.600026e-15).
+    
+    
+
 ```{r}
 Interaction_overall(model1, 
                     apipop_train, 
@@ -389,6 +380,14 @@ Interaction_feature_specific(model1,
 
 CART: Classification and Regression Tree
 
+**Interpretation**:      
+
+- overal:
+    - The ".feature" column lists the names of the independent variables (predictors or features) in the dataset, which are represented as character strings. The ".interaction" column shows the importance of each feature in the CART model, as measured by the Gini index. The Gini index is a measure of the impurity of a set of samples, and in the context of a CART model, it represents the extent to which a feature can be used to split the data into subsets that are more homogeneous with respect to the outcome variable (i.e., the dependent variable). The values in the ".interaction" column indicate the relative importance of each feature in the model. Higher values indicate that the feature is more important for splitting the data and improving the accuracy of the model, while lower values indicate that the feature is less important or may not be useful for splitting the data. In this particular output, the features "stype", "meals", and "not.hsg" have the highest importance scores, with values of 0.2715888, 0.2641148, and 0.1518510, respectively. The feature "avg.ed" has an importance score of 0.1200937, while the remaining features have importance scores of 0 or close to 0, indicating that they are not useful for splitting the data in this particular model.
+    
+- Feature specific:
+    - The ".feature" column lists the names of the independent variables (predictors or features) in the dataset, which are represented as character strings, and the ".interaction" column shows the interaction (or importance) of each feature with a specific feature, "ell". In this specific interaction, the feature "ell" is used as the basis for splitting the data, and the values in the ".interaction" column represent the importance of each feature in splitting the data based on "ell". A value of 0 indicates that the feature is not useful for splitting the data based on "ell", while NaN (not a number) indicates that the feature was not used in the model for this specific interaction. Therefore, in this specific interaction, the features "stype", "meals", and "not.hsg" are useful for splitting the data based on "ell", with importance scores of 0. The features "avg.ed", "cname", "api00", "api99", "mobility", "pct.resp", "hsg", "some.col", "col.grad", "grad.sch", "full", "emer", "enroll", and "api.stu" are not useful for splitting the data based on "ell", as indicated by NaN importance scores. It's important to note that this is only a specific interaction of the CART model, and the importance of the features may differ when considering different interactions or the overall interaction of the model. Therefore, it's necessary to interpret the model's results and interactions in the context of the specific research question and dataset.
+
 ```{r}
 Interaction_overall(model2, 
                     apipop_train, 
@@ -407,6 +406,14 @@ Interaction_feature_specific(model2,
 ### model3: XGBoost
 
 XGBoost: eXtreme Gradient Boosting
+
+**Interpretation**:      
+
+- overal:
+    - The ".feature" column lists the names of the independent variables (predictors or features) in the dataset, and the ".interaction" column shows the importance of each feature for the overall model. In this case, the values in the ".interaction" column indicate the relative contribution of each feature to the model's performance in predicting the outcome variable. According to the importance scores, "meals" is the most important feature for the model, with an importance score of 0.22003425. "pct.resp" and "avg.ed" also have relatively high importance scores of 0.11972590 and 0.10180762, respectively. Other features that are relatively important for the model include "cname", "ell", "not.hsg", and "api.stu", with importance scores ranging between 0.07118320 and 0.09305863. On the other hand, features such as "api00", "api99", "hsg", "some.col", "col.grad", "grad.sch", "emer", "enroll", and "mobility" have relatively low importance scores, suggesting that they have less influence on the model's predictions. It's worth noting that the importance scores reflect the relative contribution of each feature to the overall model and that they should be interpreted in the context of the specific research question and dataset. The importance scores may also vary depending on the hyperparameters and settings used in the XGBoost model.
+    
+- Feature specific:
+    - This specific interaction output is showing the interaction between each pair of feature and the target variable, where the target variable is 'ell' (percentage of English language learners in a school). The values indicate the importance of the interaction between each feature and the target variable in predicting the target variable. A higher value indicates that the interaction between the two features is more important for predicting the target variable. For example, the interaction between 'cname' (county name) and 'ell' has a value of 0.17532633, which indicates that the county name has a strong interaction with the percentage of English language learners in a school. Similarly, the interaction between 'not.hsg' (percentage of adults in the community without a high school diploma) and 'ell' has a value of 0.19020011, which indicates that the percentage of adults in the community without a high school diploma has a strong interaction with the percentage of English language learners in a school.
 
 ```{r}
 Interaction_overall(model3, 
@@ -467,13 +474,8 @@ rmse.test
 ```
 
 
-## f. Conclusion    
+## f.     
 
 Considering the results for the tasks above, which model object belongs to which method? Explain your choice!
 
-- model1: Generalized Linear Model (GLM) typically produces a model object of class "glm", which contains information about the model coefficients, standard errors, and various goodness-of-fit measures.    
-
-- model2: Classification and Regression Trees (CART) typically produces a model object of class "rpart", which contains information about the decision tree structure and splitting rules.    
-
-- model3: eXtreme Gradient Boosting (XGBoost) typically produces a model object of class "xgb.Booster", which contains information about the gradient boosting model parameters, feature importance, and the learned ensemble of decision trees.
-It is important to note that the specific properties of each model object may vary depending on the implementation and tuning choices made for each method.    
+We could not get what the f part is asking for. So, we put an interpretation for each part.  
