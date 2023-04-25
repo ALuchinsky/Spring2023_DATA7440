@@ -3,10 +3,9 @@ title: "DATA7440, Final Assignment"
 author: "Aleksei Luchinsky"
 date: "2023-04-12"
 output:
-  html_notebook:
-    toc: TRUE
-    toc_float:
-      collapsed: FALSE
+    html_notebook: 
+        toc: yes
+        toc_float: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -40,7 +39,7 @@ suppressPackageStartupMessages(library(googlesheets4))
 suppressPackageStartupMessages(library(hms))
 ```
 
-Here is the data set for the first problem
+
 
 ```{r}
 load("./data/external/apipop1.RData")
@@ -49,9 +48,9 @@ str(apipop_train1)
 
 # Part 1: Generating the Models
 
+Preparing train data
 
 ```{r}
-# Preparing train data
 y.train <- apipop_train1$awards
 y.test <- apipop_test1$awards
 ```
@@ -141,6 +140,21 @@ This model also tells that **stype** is the most important variable:
 rule.fit.imps <- pre::importance(rule.fit.model)
 ```
 
+```{r}
+rule.fit.imps$baseimps %>% head(10)
+```
+
+
+Most important rules here are 
+
+1) rule285: stype = "H", grad.sch <= 38, ell>0, coeff = -0.389. 
+This rule votes for negative answer and it agrees with oneR rule, default rule of the Sequential Covering model
+
+2) rule592: enroll <= 864 & api.stu > 271,      coeff = 0.18
+Coefficient is positive, to this rule votes for "Yes". It agrees, with the 1st rule of the Sequential Covering model: rule592 tends to "Yes" for small enroll, while Seq.Cov wants "No" for large enroll
+
+3) rule685: stype = c("E") & meals <= 96,       coeff = 0.17
+Coefficient is positive, to this rule votes for "Yes". This agrees with the 1st rule of the oneR model.
 
 
 # Part 2: Comparing The Models
@@ -239,10 +253,6 @@ As you can see, sequential covering is the best model both in terms of test accu
 
 > For every model for which it is appropriate, derive the variable importance measures (feature specific importances, not rule specific importances) and create another table that lists the top 4 most important features for predicting whether a school qualified for it’s award program.
 
-```{r}
-var.imp <- data.frame()
-```
-
 
 ## LASSO
 
@@ -250,8 +260,10 @@ var.imp <- data.frame()
 ```{r}
 lasso.imps <- lasso.best.model %>% coef %>% as.matrix %>% as.data.frame %>% 
   slice(-1) %>% abs %>% arrange(desc(s0))
+head(lasso.imps)
 ```
 
+**stype** is the most important variable
 
 ## One R
 
@@ -259,6 +271,7 @@ lasso.imps <- lasso.best.model %>% coef %>% as.matrix %>% as.data.frame %>%
 oneR.model
 ```
 
+As you can see, only **stype** variable is important in oneR model
 
 ## Sequential Covering
 
@@ -276,52 +289,19 @@ The following models enter these rules and are important for making the decision
 * not.hsg
 
 
+I can convert it to string and try to extract the rules using regexp
+
 
 ## Rule Fit
 
-Here is the list of 4 most important vriables for the Rule Fit model:
-
 ```{r}
 rule.fit.imps <- pre::importance(rule.fit.model, plot = FALSE)
-rfi4 <- rule.fit.imps$varimps[1:4, ]
-rfi4
+rule.fit.imps$varimps[1:4, ]
 ```
-
-Here is the list of most impornant rules:
-
-```{r}
-rule.fit.imps$baseimps %>% head(4)
-```
-
-
-Most important rules here are 
-
-1) rule285: stype = "H", grad.sch <= 38, ell>0, coeff = -0.389. 
-This rule votes for negative answer and it agrees with oneR rule, default rule of the Sequential Covering model
-
-2) rule592: enroll <= 864 & api.stu > 271,      coeff = 0.18
-Coefficient is positive, to this rule votes for "Yes". It agrees, with the 1st rule of the Sequential Covering model: rule592 tends to "Yes" for small enroll, while Seq.Cov wants "No" for large enroll
-
-3) rule685: stype = c("E") & meals <= 96,       coeff = 0.17
-Coefficient is positive, to this rule votes for "Yes". This agrees with the 1st rule of the oneR model.
-
 
 ## Results
 
 To summarize, all models tell that **stype** is the most important variable. Such variables as **enroll**, **grad.sch**, **meals** are also often present in the list of important predictors
-
-Here is the table of the most important variables:
-
-```{r}
-cbind(
-  data.frame(Lasso = rownames(lasso.imps)[1:4], lasso.imps = lasso.imps[1:4,1]),
-  data.frame(oneR = c("stype", NA, NA, NA), oneR.imps = rep(NA, 4)),
-  data.frame(SeqCover = c("stype", "enroll", "grad.sch", "not.hsg"), seq.imps = rep(NA, 4)),
-  data.frame(RuleFit = rfi4$varname, rule.imps = rfi4$imp)
-) %>% select(Lasso, oneR, SeqCover, RuleFit)
-```
-
-
 
 # Part 4: Random Forest
 
@@ -409,7 +389,7 @@ set.seed(456)
 interactSTYPE <- Interaction$new(predictor1, feature = "stype")
 ```
 
-Again, we have two identical sets of the statistics, here is ordered plot of one of them:
+Again, we have to identical sets of the statistics, here is ordered plot of one of them:
 
 ```{r}
 h2.res <- data.frame(interactSTYPE$results) %>% 
@@ -436,7 +416,7 @@ rule.fit.imps$baseimps %>% filter(grepl("stype", description) & grepl("api.stu",
 Second most important interaction according to H statistics is ell:stype. We have this pair in Rule Fit model, but it does not seem to be important
 
 ```{r}
-rule.fit.imps$baseimps %>% filter(grepl("stype", description) & grepl("ell", description)) %>% tail(1)
+rule.fit.imps$baseimps %>% filter(grepl("stype", description) & grepl("ell", description))
 ```
 
 ## d) Comparison with Rule-Fit: H-Statistics
