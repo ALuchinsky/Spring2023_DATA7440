@@ -1,0 +1,456 @@
+---
+title: "DATA7440, Final Assignment"
+author: "Aleksei Luchinsky"
+date: "2023-04-12"
+output:
+    html_notebook: 
+        toc: yes
+        toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading packages and Data
+
+```{r}
+suppressPackageStartupMessages(library(glmnet))
+suppressPackageStartupMessages(library(RWeka))
+suppressPackageStartupMessages(library(pre))
+suppressPackageStartupMessages(library(randomForest))
+suppressPackageStartupMessages(library(caret))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(magrittr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(iml))
+
+# I need to attach these libraries to suppress messages from Interaction$new
+suppressPackageStartupMessages(library(fs))
+suppressPackageStartupMessages(library(xml2))
+suppressPackageStartupMessages(library(jsonlite))
+suppressPackageStartupMessages(library(broom))
+suppressPackageStartupMessages(library(dbplyr))
+suppressPackageStartupMessages(library(readr))
+suppressPackageStartupMessages(library(httr))
+suppressPackageStartupMessages(library(gargle))
+suppressPackageStartupMessages(library(rvest))
+suppressPackageStartupMessages(library(googlesheets4))
+suppressPackageStartupMessages(library(hms))
+```
+
+
+
+```{r}
+load("./data/external/apipop1.RData")
+str(apipop_train1)
+```
+
+# Part 1: Generating the Models
+
+Preparing train data
+
+```{r}
+y.train <- apipop_train1$awards
+y.test <- apipop_test1$awards
+```
+
+
+## a) LASSO
+
+> construct a LASSO model that predicts whether or not a school qualified for it’s award program. Use 5-fold cross validation on the apipop_train1 dataset to determine the penalty parameter and specify the seed 7440 prior to running the model.
+
+
+
+
+
+```{r}
+set.seed(7440)
+cv.lasso.model <<- cv.glmnet(
+  x = data.matrix(apipop_train1[,-1]), 
+  y = apipop_train1[,1], 
+  alpha = 1, standardize = TRUE, nfolds = 5, family = "binomial")
+```
+
+The best penalty parameter is
+
+```{r}
+cv.lasso.model$lambda.min
+```
+
+
+```{r}
+lasso.best.lambda <- cv.lasso.model$lambda.min
+```
+
+Here is the modal trained with this value of parameter
+
+```{r}
+lasso.best.model <- glmnet(
+  x = data.matrix(apipop_train1[,-1]), 
+  y = apipop_train1[,1], 
+  alpha = 1, lambda = lasso.best.lambda, family = "binomial")
+```
+
+
+
+## b) oneR
+
+> Now apply a one rule algorithm to determine the feature that most explains the award outcomes.
+
+
+```{r}
+oneR.model <- OneR::OneR(awards ~ ., data = apipop_train1)
+oneR.model
+```
+
+As you can see, the feature, that is most useful to explain the outcome is **stype**
+
+## c) Sequential Covering
+
+> Now apply a sequential covering algorithm to expand the rule set derived in B.
+
+
+```{r}
+seq.model <- JRip(awards ~ ., data = apipop_test1)
+seq.model
+```
+
+As you can see, the **stype** variable is part of almost all of the rules, so it is important
+
+
+## d) Rule-Fit
+
+> Now apply a rule-fit algorithm to determine features and possible interaction effects that are important for explaining award qualification. For this model set the seed to be 2021 and also use 5 folds.
+
+
+```{r}
+set.seed(2021)
+rule.fit.model <- pre(awards ~ ., 
+                       data = apipop_train1, 
+                       family = "binomial", nfolds = 5
+                       )
+```
+
+This model also tells that **stype** is the most important variable:
+
+
+
+```{r}
+rule.fit.imps <- pre::importance(rule.fit.model)
+```
+
+```{r}
+rule.fit.imps$baseimps %>% head(10)
+```
+
+
+Most important rules here are 
+
+1) rule285: stype = "H", grad.sch <= 38, ell>0, coeff = -0.389. 
+This rule votes for negative answer and it agrees with oneR rule, default rule of the Sequential Covering model
+
+2) rule592: enroll <= 864 & api.stu > 271,      coeff = 0.18
+Coefficient is positive, to this rule votes for "Yes". It agrees, with the 1st rule of the Sequential Covering model: rule592 tends to "Yes" for small enroll, while Seq.Cov wants "No" for large enroll
+
+3) rule685: stype = c("E") & meals <= 96,       coeff = 0.17
+Coefficient is positive, to this rule votes for "Yes". This agrees with the 1st rule of the oneR model.
+
+
+# Part 2: Comparing The Models
+
+> Using the respective models create a table that provides overall accuracy, sensitivity and specificity for predicting if a school qualified for its awards program using the apipop_test1 as the test set for each of the models you derived in parts a-d of Part 1.
+
+
+
+```{r}
+y.test <- apipop_test1$awards
+cm.table <- data.frame()
+```
+
+I will use this function to collect statistics about model's accuracy and kappa on training and test sets
+
+```{r}
+fill.table <- function(model_name, pred_func, y_train=apipop_train1$awards, y_test = y.test, 
+                       trainX = apipop_train1, 
+                       testX = apipop_test1) {
+  train.predictions <- pred_func(trainX)
+  cm.train = confusionMatrix(train.predictions, y_train)
+  test.predictions <- pred_func(testX)
+  cm.test = confusionMatrix(test.predictions, y_test)
+  return(data.frame(
+    model = model_name,
+    test.accuracy = cm.test$overall[1],
+    test.kappa = cm.test$overall[2],
+    train.accuracy = cm.train$overall[1],
+    train.kappa = cm.train$overall[2]
+  ))
+}
+```
+
+
+## LASSO model
+
+```{r}
+cm.table <- rbind(cm.table, 
+  fill.table("LASSO", 
+           pred_func = function(X) {
+             probs = predict(lasso.best.model, newx = data.matrix(X), type = "response")
+             as.factor(as.vector(ifelse( probs> 0.5, "Yes", "No")))
+}, trainX = apipop_train1[,-1], testX = apipop_test1[,-1])
+)
+```
+
+
+
+## OneR
+
+```{r}
+cm.table <- rbind(cm.table, 
+  fill.table("OneR", 
+           pred_func = function(X) {
+             as.factor(predict(oneR.model, X))
+})
+)
+```
+
+
+## Sequential model
+
+```{r}
+cm.table <- rbind(cm.table, 
+  fill.table("SeqCover", 
+           pred_func = function(X) {
+             as.factor(predict(seq.model, X))
+})
+)
+```
+
+
+
+## Rule Fit
+
+```{r}
+cm.table <- rbind(cm.table, 
+  fill.table("RuleFit", 
+           pred_func = function(X) {
+             probs = predict(rule.fit.model, newdata = X, type = "response")
+             as.factor(as.vector(ifelse( probs> 0.5, "Yes", "No")))
+})
+)
+```
+
+## Results
+
+```{r}
+rownames(cm.table) <- 1:nrow(cm.table)
+cm.table %>% mutate_if(is.numeric, round, digits = 3) %>% arrange(test.accuracy)
+```
+
+As you can see, sequential covering is the best model both in terms of test accuracy and test kappa.
+
+# Part 3: Important Variables
+
+> For every model for which it is appropriate, derive the variable importance measures (feature specific importances, not rule specific importances) and create another table that lists the top 4 most important features for predicting whether a school qualified for it’s award program.
+
+
+## LASSO
+
+
+```{r}
+lasso.imps <- lasso.best.model %>% coef %>% as.matrix %>% as.data.frame %>% 
+  slice(-1) %>% abs %>% arrange(desc(s0))
+head(lasso.imps)
+```
+
+**stype** is the most important variable
+
+## One R
+
+```{r}
+oneR.model
+```
+
+As you can see, only **stype** variable is important in oneR model
+
+## Sequential Covering
+
+Here is the list of the rules
+
+```{r}
+seq.model
+```
+
+The following models enter these rules and are important for making the decisions:
+
+* stype
+* enroll
+* grad.sch
+* not.hsg
+
+
+I can convert it to string and try to extract the rules using regexp
+
+
+## Rule Fit
+
+```{r}
+rule.fit.imps <- pre::importance(rule.fit.model, plot = FALSE)
+rule.fit.imps$varimps[1:4, ]
+```
+
+## Results
+
+To summarize, all models tell that **stype** is the most important variable. Such variables as **enroll**, **grad.sch**, **meals** are also often present in the list of important predictors
+
+# Part 4: Random Forest
+
+> Now compute a random forest model to predict whether or not a school qualifies for its awards program (using the training data: apipop_train1) with 750 trees and default value of the mtry parameter. Prior to running the model, set the seed to be 429. Using your model:
+
+```{r}
+set.seed(429)
+rf.model <- randomForest(awards ~ ., data = apipop_train1, ntree = 750)
+```
+
+Train accuracy and kappa of this model is perfect. By accuracy on the test subset it is not as good:
+
+```{r}
+ cm.table <- rbind(cm.table, 
+  fill.table("RF", 
+           pred_func = function(X) {
+             predict(rf.model, newdata = X)
+})
+)
+rownames(cm.table) <- 1:nrow(cm.table)
+cm.table <- unique(cm.table)
+cm.table %>% mutate_if(is.numeric, round, digits = 3) %>% arrange(test.accuracy)
+```
+
+
+
+
+
+## a) Overall Interaction
+
+> create an overall interaction plot that displays the overall H statistic for each of the features.
+
+
+Here is the code to calculate one-feature H-statistics
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+set.seed(123)
+suppressPackageStartupMessages(
+  predictor1 <-  Predictor$new(rf.model, dat = apipop_test1, y = apipop_test1$awards)
+)
+suppressPackageStartupMessages(
+  rf.interaction1 <- Interaction$new(predictor1)
+)
+```
+
+```{r}
+rf.interaction1$results %>% head(8)
+```
+
+As you can see, the number of h-statistics values is doubled (two values for each feature, corresponding to award = "Yes" and "No"). It turns out, however, that these values are exactly the same
+
+
+```{r}
+as.data.frame(rf.interaction1$results) %>% 
+  tidyr::pivot_wider(names_from = .class, values_from = .interaction) %>% 
+  mutate(ratio = Yes/No) %>% 
+  head(10)
+```
+
+For this reason I will be interested only in .class = "Yes" part
+
+Here is the plot
+
+```{r}
+h.res <- data.frame(rf.interaction1$results) %>% 
+  filter(.class=="Yes") %>% 
+  transmute(var=.feature, value=.interaction) %>% 
+  arrange(value) %>% 
+  mutate(var = factor(var, levels = var))
+ggplot(h.res, aes(y=var, yend=var, xend = 0, x=value)) + geom_point(color = "blue", cex = 2) + 
+  geom_segment(linetype = 2)
+```
+
+
+As you can see, **stype** has the largest H-score. This agrees with our previous results
+
+## b) STYPE interactions
+
+> Using the feature with the highest overall H statistic, create an additional plot that shows the H statistics related to this specific feature
+
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+set.seed(456)
+interactSTYPE <- Interaction$new(predictor1, feature = "stype")
+```
+
+Again, we have to identical sets of the statistics, here is ordered plot of one of them:
+
+```{r}
+h2.res <- data.frame(interactSTYPE$results) %>% 
+  filter(.class=="Yes") %>% 
+  transmute(var=.feature, value=.interaction) %>% 
+  arrange(value) %>% 
+  mutate(var = factor(var, levels = var))
+ggplot(h2.res, aes(y=var, yend=var, xend = 0, x=value)) + geom_point(color = "blue", cex = 2) + 
+  geom_segment(linetype = 2)
+```
+
+## c) Comparison with Rule-Fit
+
+> Is the information in the second plot consistent with the some of the rules the Rule Fit model is reporting? Why or why not?
+
+
+As you can see, the highest h-statistic value here is for api.stu : stype interaction. For Rule Fit model there is only one rule, containing both of these variables, its importance is not very large
+
+
+```{r}
+rule.fit.imps$baseimps %>% filter(grepl("stype", description) & grepl("api.stu", description))
+```
+
+Second most important interaction according to H statistics is ell:stype. We have this pair in Rule Fit model, but it does not seem to be important
+
+```{r}
+rule.fit.imps$baseimps %>% filter(grepl("stype", description) & grepl("ell", description))
+```
+
+## d) Comparison with Rule-Fit: H-Statistics
+
+> What is the H-statistic value corresponding to the variables included in the top- most important rule in the rule fit model that involves only two predictors? (Be sure to indicate what the top-most important rule with two features is from your rule fit model, along with it’s importance) as well as the plot of that rule from the RuleFit model.
+
+```{r}
+rule.fit.imps$baseimps %>% arrange(desc(imp)) %>% head(10)
+```
+
+The most important rule, that includes two features is 
+  rule592:	enroll <= 864 & api.stu > 271
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+set.seed(456)
+interactEnroll <- Interaction$new(predictor1, feature = "enroll")
+```
+
+In the plot below it is marked as red
+
+```{r}
+h2.res <- data.frame(interactEnroll$results) %>% 
+  filter(.class=="Yes") %>% 
+  transmute(var=.feature, value=.interaction) %>% 
+  arrange(value) %>% 
+  mutate(var = factor(var, levels = var))
+ggplot(h2.res, aes(y=var, yend=var, xend = 0, x=value, color = !grepl("api.stu", var))) + geom_point(cex = 2.5) + 
+  geom_segment(linetype = 2, lwd = 1.2) + theme(legend.position = "none")
+```
+
+As you can see, this interaction is quite important, its H-value is 0.53
+
+```{r}
+interactEnroll$results %>% filter(grepl("api.stu", .feature))
+```
+
+It is not the maximal H-value for interactions, though
